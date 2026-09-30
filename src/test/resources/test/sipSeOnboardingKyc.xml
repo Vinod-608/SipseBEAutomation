@@ -1,0 +1,51 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="SipSe Onboarding and KYC Test Suite" verbose="1" data-provider-thread-count="7">
+
+    <parameter name="dbServer" value="jarfin"/>
+
+    <listeners>
+        <listener class-name="org.jarfinApiBackendAutomation.listeners.Listeners"/>
+        <listener class-name="org.jarfinApiBackendAutomation.listeners.AnnotationTransformer"/>
+    </listeners>
+
+    <test name="SipSe Onboarding and KYC Tests" preserve-order="true">
+        <classes>
+            <class name="sipSe.onBoarding.OnboardingTest">
+                <methods>
+                    <include name="submitEmail"/>
+                    <include name="onboardingVideoAsset"/>
+                    <include name="panLookup"/>
+                    <include name="panConfirm"/>
+                    <include name="preVerificationStatusPan"/>
+                    <include name="panPreVerificationStatus"/>
+                    <include name="BankVerificationStatusPan"/>
+                    <include name="bankVerificationLookUp"/>
+                    <include name="bankVerificationInitiate"/>
+                    <include name="bankVerificationFetch"/>
+<!--                    <include name="setuMockPayment"/>-->
+<!--                   <include name="bankVerificationFetchAfterMock"/>-->
+<!--                    <include name="bankPreVerificationInitiate"/>-->
+                    <include name="bankPreVerificationStatus"/>
+                    <include name="kycPrefillDetails"/>
+                    <include name="kycProfileSubmit"/>
+                    <include name="submitConsent"/>
+<!--                    <include name="addNominee"/>-->
+                    <include name="KycPreVerificationStatus"/>
+                    <include name="kycPreVerificationStatus"/>
+                    <include name="mandateSetup"/>
+                    <include name="billdeskMandateMockPayment"/>
+                    <include name="mandateVerify"/>
+                    <include name="sipSubmit"/>
+                    <include name="sipStatusScreen"/>
+                    <include name="HomeFeedMetaData"/>
+
+<!--                    <include name="bankVerificationInitiateV2"/>-->
+
+
+
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+</suite>

@@ -1,0 +1,102 @@
+package org.jarfinApiBackendAutomation.utils;
+
+import io.restassured.response.Response;
+import org.testng.asserts.SoftAssert;
+
+public class ApiAssertions {
+
+    protected final SoftAssert softAssert;
+
+    public ApiAssertions(SoftAssert softAssert) {
+        this.softAssert = softAssert;
+    }
+
+    // Exact HTTP status code check — returns true if status matches, false otherwise
+    public boolean assertStatusCode(int actual, int expected, String apiName) {
+        softAssert.assertEquals(
+                actual,
+                expected,
+                apiName + " failed: Expected HTTP " + expected + " but got " + actual);
+        return actual == expected;
+    }
+
+    // Common check for 2xx success
+    public void assertHttpSuccess(int statusCode, String apiName) {
+        softAssert.assertTrue(
+                statusCode >= 200 && statusCode < 300,
+                apiName + " failed: Expected 2xx but got " + statusCode);
+    }
+
+    // Common check for non-2xx
+    public void assertHttpFailure(int statusCode, String apiName) {
+        softAssert.assertTrue(
+                statusCode >= 400,
+                apiName + " expected failure but got success (" + statusCode + ")");
+    }
+
+    // Common check for success flag in JSON
+    public void assertSuccessFlag(Response response, String apiName) {
+        boolean success = response.jsonPath().getBoolean("success");
+        softAssert.assertTrue(success, apiName + " failed: success flag is false or null");
+    }
+
+    // Common message check
+    public void assertMessage(Response response, String expectedMessage, String apiName) {
+        String actualMessage = response.jsonPath().getString("message");
+        softAssert.assertEquals(
+                actualMessage,
+                expectedMessage,
+                apiName
+                        + " failed: expected message '"
+                        + expectedMessage
+                        + "' but got '"
+                        + actualMessage
+                        + "'");
+    }
+
+    // Common field check
+    public void assertNotNullField(Object field, String fieldName) {
+        softAssert.assertNotNull(field, fieldName + " should not be null");
+    }
+
+    // End of assertions
+    public void assertAll() {
+        softAssert.assertAll();
+    }
+
+    // Generic equality assertion
+    public <T> void assertFieldsEquals(T actual, T expected, String fieldName) {
+        softAssert.assertEquals(
+                actual,
+                expected,
+                "Expected " + fieldName + ": " + expected + ", but found: " + actual);
+    }
+
+    // Generic non-null assertion
+    public <T> void assertFieldNotNull(T actual, String fieldName) {
+        softAssert.assertNotNull(actual, "Expected " + fieldName + " to be not null, but was null");
+    }
+
+    // Generic boolean assertion
+    public void assertFieldTrue(boolean condition, String fieldName, String additionalMessage) {
+        softAssert.assertTrue(
+                condition, "Expected " + fieldName + " to be true. " + additionalMessage);
+    }
+
+    // Generic boolean assertion
+    public void assertFieldFalse(boolean condition, String fieldName, String additionalMessage) {
+        softAssert.assertFalse(
+                condition, "Expected " + fieldName + " to be false. " + additionalMessage);
+    }
+
+    // Generic null assertion
+    public <T> void assertFieldNull(T actual, String fieldName) {
+        softAssert.assertNull(
+                actual, "Expected " + fieldName + " to be null, but found: " + actual);
+    }
+
+    // Generic Fail
+    public void assertFail(String message) {
+        softAssert.fail(message);
+    }
+}

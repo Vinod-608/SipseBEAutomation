@@ -1,0 +1,29 @@
+package org.jarfinApiBackendAutomation.data.responseModel.sipSe.homeFeed;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.jarfinApiBackendAutomation.data.responseModel.CommonResultModel;
+
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class HomeFeedMetaDataResponse extends CommonResultModel {
+
+
+
+
+        private boolean success;
+        private ResponseData data;
+
+        @Data
+        public static class ResponseData {
+            private String onboardingState;
+            private List<String> featureSections;
+        }
+    }
+

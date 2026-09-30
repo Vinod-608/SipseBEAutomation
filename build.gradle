@@ -1,0 +1,163 @@
+plugins {
+    id 'java'
+    id "com.diffplug.spotless" version "7.2.1"
+    id 'io.qameta.allure' version '4.1.0'
+}
+
+group = 'org.jarfinApiTesting'
+version = '1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    allureVersion = '2.29.0'
+    restAssuredVersion = '5.5.0'
+    testngVersion = '7.11.0'
+    aspectjVersion = '1.9.20.1'
+}
+
+allure {
+    version = "${allureVersion}"
+    adapter {
+        autoconfigure = false
+        aspectjWeaver = false
+    }
+    report {
+        version = "${allureVersion}"
+    }
+}
+
+spotless {
+    java {
+        googleJavaFormat('1.27.0').aosp().reflowLongStrings().groupArtifact('com.google.googlejavaformat:google-java-format')
+    }
+}
+
+dependencies {
+    /* ---------------- Rest Assured ---------------- */
+    implementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+    implementation "io.rest-assured:json-path:${restAssuredVersion}"
+    implementation "io.rest-assured:json-schema-validator:${restAssuredVersion}"
+
+    /* ---------------- TestNG ---------------- */
+    implementation "org.testng:testng:${testngVersion}"
+
+    /* ---------------- Allure ---------------- */
+    implementation platform("io.qameta.allure:allure-bom:${allureVersion}")
+    implementation "io.qameta.allure:allure-testng"
+    implementation "io.qameta.allure:allure-rest-assured"
+
+    /* ---------------- Lombok ---------------- */
+    compileOnly "org.projectlombok:lombok:1.18.34"
+    annotationProcessor "org.projectlombok:lombok:1.18.34"
+    testCompileOnly "org.projectlombok:lombok:1.18.34"
+    testAnnotationProcessor "org.projectlombok:lombok:1.18.34"
+
+    /* ---------------- JSON ---------------- */
+    implementation "org.json:json:20250517"
+
+    /* ---------------- Apache POI ---------------- */
+    implementation "org.apache.poi:poi:5.4.1"
+    implementation "org.apache.poi:poi-ooxml:5.4.1"
+    implementation "commons-io:commons-io:2.16.1"
+
+    /* ---------------- MongoDB ---------------- */
+    implementation "org.mongodb:mongodb-driver-sync:5.2.0"
+
+    /* ---------------- Logging ---------------- */
+    implementation "commons-logging:commons-logging:1.3.5"
+    implementation "ch.qos.logback:logback-classic:1.5.6"
+    implementation "org.apache.logging.log4j:log4j-to-slf4j:2.23.1"
+
+    /* ---------------- Jackson ---------------- */
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.17.2"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.17.2"
+
+    /* ---------------- JSON Flattener ---------------- */
+    implementation "com.github.wnameless.json:json-flattener:0.17.4"
+
+    /* ---------------- PostgreSQL ---------------- */
+    implementation "org.postgresql:postgresql:42.7.7"
+
+    /* ---------------- AspectJ (for Allure weaving) ---------------- */
+    testRuntimeOnly "org.aspectj:aspectjweaver:${aspectjVersion}"
+    testImplementation 'org.awaitility:awaitility:4.2.2'
+}
+
+tasks.named('allureReport') {
+    clean = true
+}
+
+tasks.register('openAllureReport') {
+    dependsOn 'allureReport'
+    doLast {
+        def reportDir = "${buildDir}/reports/allure-report/allureReport"
+        ['sh', '-c', 'lsof -ti:8080 | xargs kill -9 2>/dev/null || true'].execute().waitFor()
+        ['sh', '-c', "cd ${reportDir} && python3 -m http.server 8080 &>/tmp/allure-server.log &"].execute()
+        Thread.sleep(800)
+        ['open', 'http://localhost:8080'].execute()
+        println "Allure report opened at http://localhost:8080"
+    }
+}
+
+tasks.register('copyAllureReport') {
+    dependsOn 'allureReport'
+    doLast {
+        def timestamp = new Date().format('dd-MM-yyyy_HH-mm-ss')
+        def srcDir = file("${buildDir}/reports/allure-report/allureReport")
+        def destDir = file("${projectDir}/.allure-reports/allure-report_${timestamp}")
+        copy {
+            from srcDir
+            into destDir
+        }
+        println "Allure report saved to: ${destDir}"
+    }
+}
+
+tasks.register('cleanAllureResults', Delete) {
+    delete "${buildDir}/allure-results"
+}
+
+test {
+    dependsOn 'cleanAllureResults'
+
+    useTestNG {
+        if (project.hasProperty('suite')) {
+            def suiteName = project.property('suite').toString()
+
+            if (!suiteName.endsWith('.xml')) {
+                suiteName += '.xml'
+            }
+            suites("src/test/resources/test/${suiteName}")
+        }
+    }
+
+    // Disable parallel JVMs (avoid multiple DB init)
+    maxParallelForks = 1
+    forkEvery = 0
+
+    // AspectJ (same as Maven argLine)
+    doFirst {
+        jvmArgs "-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains('aspectjweaver') }}"
+    }
+
+    // Logging
+    systemProperty "logback.configurationFile", "src/test/resources/logback-test.xml"
+
+    testLogging {
+        events "passed", "failed", "skipped"
+
+        showStandardStreams = true
+    }
+
+    finalizedBy 'openAllureReport'
+}
+
