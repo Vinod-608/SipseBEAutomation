@@ -34,9 +34,11 @@ public class SipStatusResponse extends CommonResultModel {
         private Double availableUnits;
         private Double returns;
         private Double returnsPercentage;
-        private String status;
+        private PaymentStatus status;
         private Long startedAt;
         private String bankAccountNumber;
         private String ifscCode;
+        private PaymentStatus action;
+
     }
 }

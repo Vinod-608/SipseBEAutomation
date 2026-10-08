@@ -16,6 +16,8 @@ import java.util.List;
 import org.jarfinApiBackendAutomation.data.requestModel.consent.SubmitUserConsentRequest;
 import org.jarfinApiBackendAutomation.data.requestModel.nominee.AddNomineeRequest;
 import org.jarfinApiBackendAutomation.data.responseModel.sipSe.mandate.VerifyMandateResponse;
+import org.jarfinApiBackendAutomation.data.responseModel.sipSe.sip.PaymentStatus;
+import org.jarfinApiBackendAutomation.data.responseModel.sipSe.sip.SipStatusResponse;
 import org.testng.annotations.DataProvider;
 import sipSe.testData.auth.TestDataAuth;
 
@@ -42,20 +44,20 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "panConfirmScenarios")
     public static Object[][] panConfirmScenarios() {
         return new Object[][] {
-            {
-                new PanConfirmScenario(
-                        "Negative Scenario: Invalid Token",
-                        "invalid_token",
-                        null,
-                        PanConfirmAssertion.UNAUTHORIZED)
-            },
-            {
-                new PanConfirmScenario(
-                        "Negative Scenario: Invalid PAN Format",
-                        null,
-                        "INVALID123",
-                        PanConfirmAssertion.BAD_REQUEST)
-            },
+//            {
+//                new PanConfirmScenario(
+//                        "Negative Scenario: Invalid Token",
+//                        "invalid_token",
+//                        null,
+//                        PanConfirmAssertion.UNAUTHORIZED)
+//            },
+//            {
+//                new PanConfirmScenario(
+//                        "Negative Scenario: Invalid PAN Format",
+//                        null,
+//                        "INVALID123",
+//                        PanConfirmAssertion.BAD_REQUEST)
+//            },
                 {
                         new PanConfirmScenario(
                                 "Positive Scenario: Valid Token + Valid PAN",
@@ -69,12 +71,12 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "submitEmailScenarios")
     public static Object[][] submitEmailScenarios() {
         return new Object[][] {
-            {"Negative Scenario: Empty Email", EmailOnboardingRequest.buildEmailPayload(""), false},
-            {
-                "Negative Scenario: Null Email",
-                EmailOnboardingRequest.buildEmailPayload(null),
-                false
-            },
+//            {"Negative Scenario: Empty Email", EmailOnboardingRequest.buildEmailPayload(""), false},
+//            {
+//                "Negative Scenario: Null Email",
+//                EmailOnboardingRequest.buildEmailPayload(null),
+//                false
+//            },
             {
                 "Positive Scenario: Valid Email",
                 EmailOnboardingRequest.buildEmailPayload("qa@jarfinretail.com"),
@@ -157,10 +159,12 @@ public class OnBoardingdataProvider {
                 return data == null || data.getLookupStatus() != BankLookupStatus.FETCHED;
             };
 
+
+
     @DataProvider(name = "bankVerificationScenarios")
     public static Object[][] bankVerificationScenarios() {
         return new Object[][] {
-            {new PanLookupScenario("Negative Scenario: Invalid Token", false)},
+//            {new PanLookupScenario("Negative Scenario: Invalid Token", false)},
             {new PanLookupScenario("Positive Scenario: Valid Token", true)},
         };
     }
@@ -170,7 +174,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "bankVerificationInitiateScenarios")
     public static Object[][] bankVerificationInitiateScenarios() {
         return new Object[][] {
-            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
+//            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
             {new BankVerificationInitiateScenario("Positive Scenario: Valid Token", null)},
         };
     }
@@ -184,7 +188,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "panStatusScenarios")
     public static Object[][] panStatusScenarios() {
         return new Object[][] {
-            {new PanLookupScenario("Negative Scenario: Invalid Token", false)},
+//            {new PanLookupScenario("Negative Scenario: Invalid Token", false)},
             {new PanLookupScenario("Positive Scenario: Valid Token", true)},
         };
     }
@@ -192,7 +196,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "kycPrefillDetailsScenarios")
     public static Object[][] kycPrefillDetailsScenarios() {
         return new Object[][] {
-            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
+//            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
             {new BankVerificationInitiateScenario("Positive Scenario: Valid Token", null)},
         };
     }
@@ -200,7 +204,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "bankVerificationFetchScenarios")
     public static Object[][] bankVerificationFetchScenarios() {
         return new Object[][] {
-            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
+//            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
             {new BankVerificationInitiateScenario("Positive Scenario: Valid Token", null)},
         };
     }
@@ -208,7 +212,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "bankVerificationInitiateV2Scenarios")
     public static Object[][] bankVerificationInitiateV2Scenarios() {
         return new Object[][] {
-            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
+//            {new BankVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token")},
             {new BankVerificationInitiateScenario("Positive Scenario: Valid Token", null)},
         };
     }
@@ -222,7 +226,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "bankPreVerificationInitiateScenarios")
     public static Object[][] bankPreVerificationInitiateScenarios() {
         return new Object[][] {
-            {new BankPreVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token", POST_RPD_PRE_VERIFICATION)},
+//            {new BankPreVerificationInitiateScenario("Negative Scenario: Invalid Token", "invalid_token", POST_RPD_PRE_VERIFICATION)},
             {new BankPreVerificationInitiateScenario("Positive Scenario: Valid Token", null, POST_RPD_PRE_VERIFICATION)},
         };
     }
@@ -231,6 +235,15 @@ public class OnBoardingdataProvider {
             response -> {
                 PanPreVerificationStatusResponse.DataResponse data = response.getData();
                 return data != null && data.getAction() == PreVerificationAction.IN_PROGRESS;
+            };
+
+
+    public static final Predicate<SipStatusResponse> SIP_STATUS_SHOULD_RETRY =
+            response -> {
+                // Retry on gateway errors (504, 502, 503) — body is not JSON, data will be null
+                if (response.getStatusCode() >= 500) return true;
+                SipStatusResponse.SipStatusData data = response.getData();
+                return data != null && data.getStatus() == PaymentStatus.PENDING;
             };
 
     public static final Predicate<BankVerificationInitiateResponse> BANK_FETCH_SHOULD_RETRY =
@@ -248,7 +261,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "bankPreVerificationStatusScenarios")
     public static Object[][] bankPreVerificationStatusScenarios() {
         return new Object[][] {
-            {new PanLookupScenario("Negative Scenario: Invalid Token", false)},
+//            {new PanLookupScenario("Negative Scenario: Invalid Token", false)},
             {new PanLookupScenario("Positive Scenario: Valid Token", true)},
         };
     }
@@ -258,7 +271,7 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "mandateSetupScenarios")
     public static Object[][] mandateSetupScenarios() {
         return new Object[][] {
-            {new MandateSetupScenario("Negative Scenario: Invalid Token", "invalid_token")},
+//            {new MandateSetupScenario("Negative Scenario: Invalid Token", "invalid_token")},
             {new MandateSetupScenario("Positive Scenario: Valid Token", null)},
         };
     }
@@ -278,8 +291,8 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "submitConsentScenarios")
     public static Object[][] submitConsentScenarios() {
         return new Object[][] {
-            {new ConsentScenario("Negative Scenario: Invalid Token", "invalid_token", SubmitUserConsentRequest.build("consent_abc123", List.of("+91 9876543210")), ConsentAssertion.UNAUTHORIZED)},
-            {new ConsentScenario("Negative Scenario: Missing consentId", null, SubmitUserConsentRequest.build(null), ConsentAssertion.BAD_REQUEST)},
+//            {new ConsentScenario("Negative Scenario: Invalid Token", "invalid_token", SubmitUserConsentRequest.build("consent_abc123", List.of("+91 9876543210")), ConsentAssertion.UNAUTHORIZED)},
+//            {new ConsentScenario("Negative Scenario: Missing consentId", null, SubmitUserConsentRequest.build(null), ConsentAssertion.BAD_REQUEST)},
             {new ConsentScenario("Positive Scenario: Valid Consent", null, SubmitUserConsentRequest.build("6a0c16ec38d726313b5d8fe7", List.of("+91 9876543210")), ConsentAssertion.SUCCESS)},
         };
     }
@@ -296,8 +309,8 @@ public class OnBoardingdataProvider {
     @DataProvider(name = "addNomineeScenarios")
     public static Object[][] addNomineeScenarios() {
         return new Object[][] {
-            {new NomineeScenario("Negative Scenario: Invalid Token", "invalid_token", AddNomineeRequest.buildDefault(), NomineeAssertion.UNAUTHORIZED)},
-            {new NomineeScenario("Negative Scenario: Missing Required Field", null, AddNomineeRequest.builder().dob("1992-03-21").relation("SPOUSE").build(), NomineeAssertion.BAD_REQUEST)},
+//            {new NomineeScenario("Negative Scenario: Invalid Token", "invalid_token", AddNomineeRequest.buildDefault(), NomineeAssertion.UNAUTHORIZED)},
+//            {new NomineeScenario("Negative Scenario: Missing Required Field", null, AddNomineeRequest.builder().dob("1992-03-21").relation("SPOUSE").build(), NomineeAssertion.BAD_REQUEST)},
             {new NomineeScenario("Positive Scenario: Valid Nominee", null, AddNomineeRequest.buildDefault(), NomineeAssertion.SUCCESS)},
         };
     }

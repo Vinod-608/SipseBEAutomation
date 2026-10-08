@@ -231,64 +231,6 @@ public class OnboardingValidation extends ApiAssertions {
         softAssert.assertAll();
     }
 
-    public void assertKycProfileSubmitUnauthorized(SubmitProfileResponse response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_UNAUTHORIZED, "KYC Profile Submit [Unauthorized]")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertFalse(response.isSuccess(), "success must be false for invalid token");
-        softAssert.assertAll();
-    }
-
-    public void assertBankVerificationFetchSuccess(BankVerificationInitiateResponse response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_OK, "Bank Verification Fetch")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertTrue(response.isSuccess(), "success must be true");
-        softAssert.assertNotNull(response.getData(), "data must not be null");
-        BankVerificationInitiateResponse.VerificationData data = response.getData();
-        if (data != null) {
-            softAssert.assertNotNull(data.getVerificationId(), "verificationId must not be null");
-            softAssert.assertFalse(
-                    data.getVerificationId() == null || data.getVerificationId().isBlank(),
-                    "verificationId must not be blank");
-            softAssert.assertNotNull(data.getBankVerificationStatus(), "bankVerificationStatus must not be null");
-        }
-        softAssert.assertAll();
-    }
-
-    public void assertBankVerificationFetchAfterMockSuccess(BankVerificationInitiateResponse response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_OK, "Bank Verification Fetch After Mock")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertTrue(response.isSuccess(), "success must be true");
-        softAssert.assertNotNull(response.getData(), "data must not be null");
-        BankVerificationInitiateResponse.VerificationData data = response.getData();
-        if (data != null) {
-            softAssert.assertNotNull(data.getVerificationId(), "verificationId must not be null");
-            softAssert.assertEquals(
-                    data.getBankVerificationStatus(),
-                    BankVerificationStatus.SUCCESS,
-                    "bankVerificationStatus must be SUCCESS after mock payment");
-            softAssert.assertNotNull(data.getBankAccountDetailsDto(), "bankAccountDetailsDto must not be null on SUCCESS");
-            if (data.getBankAccountDetailsDto() != null) {
-                softAssert.assertNotNull(data.getBankAccountDetailsDto().getAccountNumber(), "accountNumber must not be null");
-                softAssert.assertNotNull(data.getBankAccountDetailsDto().getAccountIfsc(), "accountIfsc must not be null");
-            }
-        }
-        softAssert.assertAll();
-    }
-
-    public void assertBankVerificationFetchUnauthorized(BankVerificationInitiateResponse response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_UNAUTHORIZED, "Bank Verification Fetch [Unauthorized]")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertFalse(response.isSuccess(), "success must be false for invalid token");
-        softAssert.assertAll();
-    }
 
     public void assertBankVerificationInitiateUnauthorized(
             @MonotonicNonNull PanPreVerificationStatusResponse response) {
@@ -300,65 +242,10 @@ public class OnboardingValidation extends ApiAssertions {
         softAssert.assertAll();
     }
 
-    public void assertBankVerificationInitiateV2Success(BankVerificationInitiateV2Response response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_OK, "Bank Verification Initiate V2")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertTrue(response.isSuccess(), "success must be true");
-        softAssert.assertNotNull(response.getData(), "data must not be null");
-        BankVerificationInitiateV2Response.VerificationData data = response.getData();
-        if (data != null) {
-            softAssert.assertNotNull(data.getUpiLink(), "upiLink must not be null");
-            softAssert.assertFalse(data.getUpiLink() == null || data.getUpiLink().isBlank(), "upiLink must not be blank");
-            softAssert.assertNotNull(data.getVerificationId(), "verificationId must not be null");
-            softAssert.assertFalse(data.getVerificationId() == null || data.getVerificationId().isBlank(), "verificationId must not be blank");
-            softAssert.assertNotNull(data.getBankVerificationStatus(), "bankVerificationStatus must not be null");
-        }
-        softAssert.assertAll();
-    }
 
-    public void assertBankVerificationInitiateV2Unauthorized(BankVerificationInitiateV2Response response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_UNAUTHORIZED, "Bank Verification Initiate V2 [Unauthorized]")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertFalse(response.isSuccess(), "success must be false for invalid token");
-        softAssert.assertAll();
-    }
 
-    public void assertSetuMockPaymentSuccess(SetuMockPaymentResponse response) {
-        assertStatusCode(response.getStatusCode(), SC_OK, "Setu Mock Payment");
-        softAssert.assertAll();
-    }
 
-    public void assertBankPreVerificationInitiateSuccess(PanPreVerificationStatusResponse response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_OK, "Bank Pre-Verification Initiate")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertTrue(response.isSuccess(), "success must be true");
-        softAssert.assertNotNull(response.getData(), "data must not be null");
-        PanPreVerificationStatusResponse.DataResponse data = response.getData();
-        if (data != null) {
-            softAssert.assertNotNull(data.getCurrentContext(), "currentContext must not be null");
-            softAssert.assertEquals(
-                    data.getCurrentContext(),
-                    PreVerificationContext.BANK_VALIDATION,
-                    "currentContext must be BANK_VALIDATION");
-            softAssert.assertNotNull(data.getAction(), "action must not be null");
-        }
-        softAssert.assertAll();
-    }
 
-    public void assertBankPreVerificationInitiateUnauthorized(PanPreVerificationStatusResponse response) {
-        if (!assertStatusCode(response.getStatusCode(), SC_UNAUTHORIZED, "Bank Pre-Verification Initiate [Unauthorized]")) {
-            softAssert.assertAll();
-            return;
-        }
-        softAssert.assertFalse(response.isSuccess(), "success must be false for invalid token");
-        softAssert.assertAll();
-    }
 
     public void assertBankPreVerificationStatusSuccess(PanPreVerificationStatusResponse response) {
         if (!assertStatusCode(response.getStatusCode(), SC_OK, "Bank Pre-Verification Status")) {

@@ -26,8 +26,8 @@ public class SipSeEndPoints {
     public static final String BILLDESK_ENACH_CALLBACK_SIMULATOR = "https://uat1.billdesk.com/u2/websimulator/enach/callbackSimulator";
     public static final String BILLDESK_ENACH_CALLBACK_RESPONSE = "https://uat1.billdesk.com/u2/websimulator/enach/callbackResponse";
     public static final String BILLDESK_MANDATE_PROCESS_NPCI_RESP = "https://uat1.billdesk.com/u2/web/v1_2/mandates/processnpciresp";
-    public static final String FINPRIM_BILLDESK_CALLBACK = "https://cybrillarta.s.finprim.com/api/pg/payments/netbanking/billdesk/callback/469719";
-    public static final String FINPRIM_ONDC_CALLBACK = "https://changejarondc.s.finprim.com/api/pg/payments/netbanking/ondc/callback/b2538f2f77f9f1c32f13076f9d71b107e3cfa9dc6458dd4ad78a78bab978f93f/2030";
+    public static final String FINPRIM_BILLDESK_CALLBACK = "https://api-staging.sipse.in/finprim/v1/billdesk/callback";
+    public static final String FINPRIM_ONDC_CALLBACK = "https://api-staging.sipse.in/finprim/v1/billdesk/callback/ondc";
     public static final String NOMINEE_ADD = "/v1/api/nominee/add";
     public static final String CONSENT_SUBMIT = "/v1/api/consent/submit";
     public static final String MANDATE_VERIFY = "/finretail/v1/api/sip/verify";

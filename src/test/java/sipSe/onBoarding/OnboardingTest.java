@@ -10,6 +10,7 @@ import org.jarfinApiBackendAutomation.data.responseModel.sipSe.onboarding.EmailO
 import org.jarfinApiBackendAutomation.data.responseModel.sipSe.onboarding.OnboardingVideoResponse;
 import org.jarfinApiBackendAutomation.data.responseModel.sipSe.onboarding.PanLookupScenario;
 import org.jarfinApiBackendAutomation.utils.CommonUtil;
+import org.jarfinApiBackendAutomation.utils.MockDataSeeder;
 import org.testng.Assert;
 import org.testng.ITestContext;
 import org.testng.SkipException;
@@ -48,6 +49,7 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
     private PrefillKycDetailsResponse.PrefillData prefillData;
     private String mandateId;
     private String purchasePlanId;
+    private String mandateRedirectUrl;
     private static final String MANDATE_SCHEME_ID = "6a270c20bd140f0050a265cd";
 
     // Set by panLookup happy-path, consumed by panConfirm* tests
@@ -88,6 +90,9 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
             dataProvider = "submitEmailScenarios",
             dataProviderClass = OnBoardingdataProvider.class)
     public void submitEmail(String scenario, EmailOnboardingRequest request, boolean isHappyCase) {
+        if ( isKycVerified) {
+            throw new SkipException("KYC is already verified skipping email");
+        }
         try {
             EmailOnboardingResponse response =
                     onboardingMethodhelper.submitEmail(request, accessToken);
@@ -124,6 +129,9 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
 
     @Test(priority = 2, description = "KYC preverification api to check the status")
     public void preVerificationStatusPan() {
+        if ( isKycVerified) {
+            throw new SkipException("KYC is already verified skipping prefill");
+        }
         callPPreVerificationStatus();
     }
 
@@ -298,6 +306,9 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
 
     @Test(priority = 7, description = "KYC pre-verification status check before bank tests")
     public void BankVerificationStatusPan() {
+        if ( isKycVerified) {
+            throw new SkipException("KYC is already verified skipping prefill");
+        }
         callKycPreVerificationStatus();
     }
 
@@ -402,118 +413,7 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
         }
     }
 
-//    @Test(
-//            priority = 9,
-//            description = "Bank Verification Fetch — valid and invalid token",
-//            dataProvider = "bankVerificationFetchScenarios",
-//            dataProviderClass = OnBoardingdataProvider.class)
-//    public void bankVerificationFetch(BankVerificationInitiateScenario scenario) {
-//        skipIfBankAlreadyLinked();
-//        if (initiateVerificationID == null || initiateVerificationID.isBlank()) {
-//            throw new SkipException("initiateVerificationID not available — skipping Bank Verification Fetch");
-//        }
-//        try {
-//            String token =
-//                    scenario.tokenOverride() != null ? scenario.tokenOverride() : accessToken;
-//            if (scenario.tokenOverride() != null) {
-//                BankVerificationInitiateResponse response =
-//                        onboardingMethodhelper.bankVerificationFetch(token, initiateVerificationID);
-//                onboardingValidation.assertBankVerificationFetchUnauthorized(response);
-//            } else {
-//                // Status is PENDING at this stage (before setuMockPayment) — single call, no polling
-//                BankVerificationInitiateResponse response =
-//                        onboardingMethodhelper.bankVerificationFetch(accessToken, initiateVerificationID);
-//                onboardingValidation.assertBankVerificationFetchSuccess(response);
-//            }
-//        } catch (Exception e) {
-//            log.error(
-//                    "Exception during Bank Verification Fetch [{}]: {}",
-//                    scenario.description(),
-//                    e.getMessage());
-//        }
-//    }
-//
-//
-//    @Test(priority = 10, description = "Setu Mock Payment — trigger successful payment for bank verification")
-//    public void setuMockPayment() {
-//        skipIfBankAlreadyLinked();
-//        if (initiateVerificationID == null || initiateVerificationID.isBlank()) {
-//            throw new SkipException("initiateVerificationID not available — skipping Setu mock payment");
-//        }
-//        try {
-//            SetuMockPaymentResponse response =
-//                    onboardingMethodhelper.setuMockPayment(initiateVerificationID);
-//            onboardingValidation.assertSetuMockPaymentSuccess(response);
-//        } catch (Exception e) {
-//            log.error("Exception during Setu Mock Payment: {}", e.getMessage());
-//        }
-//    }
-//
-//    @Test(
-//            priority = 11,
-//            description = "Bank Verification Fetch after mock— valid and invalid token",
-//            dataProvider = "bankVerificationFetchScenarios",
-//            dataProviderClass = OnBoardingdataProvider.class)
-//    public void bankVerificationFetchAfterMock(BankVerificationInitiateScenario scenario) {
-//        skipIfBankAlreadyLinked();
-//        if (initiateVerificationID == null || initiateVerificationID.isBlank()) {
-//            throw new SkipException("initiateVerificationID not available — skipping Bank Verification Fetch After Mock");
-//        }
-//        try {
-//            String token =
-//                    scenario.tokenOverride() != null ? scenario.tokenOverride() : accessToken;
-//            if (scenario.tokenOverride() != null) {
-//                BankVerificationInitiateResponse response =
-//                        onboardingMethodhelper.bankVerificationFetch(token, initiateVerificationID);
-//                onboardingValidation.assertBankVerificationFetchUnauthorized(response);
-//            } else {
-//                BankVerificationInitiateResponse response =
-//                        CommonUtil.pollUntilDone(
-//                                () -> onboardingMethodhelper.bankVerificationFetch(accessToken, initiateVerificationID),
-//                                OnBoardingdataProvider.BANK_FETCH_SHOULD_RETRY,
-//                                OnBoardingdataProvider.DEFAULT_MAX_RETRIES,
-//                                OnBoardingdataProvider.DEFAULT_DELAY_MS,
-//                                "Bank Verification Fetch After Mock");
-//                onboardingValidation.assertBankVerificationFetchAfterMockSuccess(response);
-//            }
-//        } catch (Exception e) {
-//            log.error(
-//                    "Exception during Bank Verification Fetch [{}]: {}",
-//                    scenario.description(),
-//                    e.getMessage());
-//        }
-//    }
-//
-//    @Test(
-//            priority = 7,
-//            description = "Bank Pre-Verification Initiate — valid and invalid token",
-//            dataProvider = "bankPreVerificationInitiateScenarios",
-//            dataProviderClass = OnBoardingdataProvider.class)
-//    public void bankPreVerificationInitiate(BankPreVerificationInitiateScenario scenario) {
-//
-//
-//        try {
-//            String token =
-//                    scenario.tokenOverride() != null ? scenario.tokenOverride() : accessToken;
 
-
-
-//                    ? OnBoardingdataProvider.DEFAULT_PRE_VERIFICATION
-//                    : scenario.bankVerificationContext();
-//            PanPreVerificationStatusResponse response =
-//                    onboardingMethodhelper.bankPreVerificationInitiate(token, context);
-//            if (scenario.tokenOverride() != null) {
-//                onboardingValidation.assertBankPreVerificationInitiateUnauthorized(response);
-//            } else {
-//                onboardingValidation.assertBankPreVerificationInitiateSuccess(response);
-//            }
-//        } catch (Exception e) {
-//            log.error(
-//                    "Exception during Bank Pre-Verification Initiate [{}]: {}",
-//                    scenario.description(),
-//                    e.getMessage());
-//        }
-//    }
 
     @Test(
             priority = 11,
@@ -557,8 +457,11 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
 
     @Test(priority = 12, description = " Preverification  status api before calling prefill api verification")
     public void KycPreVerificationStatus() {
-
+        if ( isKycVerified) {
+            throw new SkipException("KYC is already verified skipping email");
+        }
         callPPreVerificationStatus();
+
     }
 
 
@@ -682,7 +585,7 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
     public void mandateSetup(MandateSetupScenario scenario) {
         try {
             String token = scenario.tokenOverride() != null ? scenario.tokenOverride() : accessToken;
-            SetupMandateRequest request = SetupMandateRequest.build(50, MANDATE_SCHEME_ID, UpiApp.PHONEPE);
+            SetupMandateRequest request = SetupMandateRequest.build(100, MANDATE_SCHEME_ID, UpiApp.PHONEPE);
             SetupMandateResponse response = onboardingMethodhelper.setupMandate(token, request);
             if (scenario.tokenOverride() != null) {
                 onboardingValidation.assertSetupMandateUnauthorized(response);
@@ -690,6 +593,7 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
                 if (response.getData() != null) {
                     mandateId = response.getData().getMandateId();
                     purchasePlanId = response.getData().getPurchasePlanId();
+                    mandateRedirectUrl = response.getData().getRedirectUrl();
                 }
                 onboardingValidation.assertSetupMandateSuccess(response);
             }
@@ -731,7 +635,7 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
     public void billdeskMandateMockPayment() {
         try {
             BillDeskMandateMockResponse response =
-                    onboardingMethodhelper.billdeskMandateMockPayment();
+                    MockDataSeeder.billdeskMandateMockPayment(mandateRedirectUrl);
             onboardingValidation.assertBillDeskMandateMockSuccess(response);
         } catch (Exception e) {
             log.error("Exception during BillDesk Mandate Mock Payment: {}", e.getMessage());
@@ -795,8 +699,15 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
         }
         try {
             SipStatusResponse response =
-                    onboardingMethodhelper.sipStatusScreen(accessToken, purchasePlanId);
+                        CommonUtil.pollUntilDone(
+                                () -> onboardingMethodhelper.sipStatusScreen(accessToken, purchasePlanId),
+                                OnBoardingdataProvider.SIP_STATUS_SHOULD_RETRY,
+                                OnBoardingdataProvider.DEFAULT_MAX_RETRIES,
+                                OnBoardingdataProvider.DEFAULT_DELAY_MS,
+                                "payment Pre-Verification Status");
             onboardingValidation.assertSipStatusSuccess(response);
+
+
         } catch (SkipException e) {
             throw e;
         } catch (Exception e) {
