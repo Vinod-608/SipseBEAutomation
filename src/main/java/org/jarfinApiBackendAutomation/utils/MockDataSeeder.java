@@ -203,27 +203,50 @@ public class MockDataSeeder extends RestRequest {
         String mandateResponseDecoded = unescapeHtml(mandateResponse);
         log.info("Step 3 — mandate_response decoded length={}", mandateResponseDecoded.length());
 
-        // Step 4 — finprim BillDesk callback: deliver the mandate token via sipse gateway with txnId
+        // Step 4 — finprim BillDesk callback: URL comes from Step 3's form action
+        String step4Url = extractFormAction(step3Body);
+        if (step4Url == null || step4Url.isBlank()) {
+            log.warn("Step 3 — could not extract form action for Step 4, falling back to configured endpoint");
+            step4Url = finprimBdCallbackUrl;
+        } else {
+            log.info("Step 3 — extracted Step 4 URL from form action: {}", step4Url);
+        }
         String step4FormBody = "mandate_response=" + java.net.URLEncoder.encode(mandateResponseDecoded, java.nio.charset.StandardCharsets.UTF_8)
                 + "&mandate_tokenid=";
         Response step4 = apiRequests.post(RestRequest.builder()
-                .headers(Map.of("Content-Type", "application/x-www-form-urlencoded"))
+                .headers(Map.of("Content-Type", "application/x-www-form-urlencoded",
+                        "origin", "https://uat1.billdesk.com",
+                        "referer", "https://uat1.billdesk.com/"))
                 .rawFormBody(step4FormBody)
-                .url(finprimBdCallbackUrl)
+                .url(step4Url)
                 .build());
         result.setFinprimBillDeskCallbackStatus(step4.getStatusCode());
         log.info("Step 4 finprimBillDeskCallback — status={}", step4.getStatusCode());
 
-        // Step 5 — finprim ONDC callback: notify ONDC of the successful mandate via sipse gateway with txnId
-        String step5FormBody = "status=success"
-                + "&paymentId=508868"
-                + "&failureReason=Mandate+Successful"
-                + "&failureCode="
-                + "&hash=f202e649a89734cfa807c073dcd848f5e6f49298a6b324923ec228c3e584cabe";
+        // Step 5 — finprim ONDC callback: URL and body come from Step 4's response
+        String step4Body = step4.getBody().asString();
+        String step5Url = extractFormAction(step4Body);
+        String step5FormBody = buildFormBodyFromHtml(step4Body);
+        if (step5Url == null || step5Url.isBlank()) {
+            log.warn("Step 4 — could not extract form action for Step 5, falling back to configured endpoint");
+            step5Url = finprimOndcCallbackUrl;
+        } else {
+            log.info("Step 4 — extracted Step 5 URL from form action: {}", step5Url);
+        }
+        if (step5FormBody == null || step5FormBody.isBlank()) {
+            log.warn("Step 4 — could not extract form body for Step 5, using fallback");
+            step5FormBody = "status=success"
+                    + "&paymentId=508868"
+                    + "&failureReason=Mandate+Successful"
+                    + "&failureCode="
+                    + "&hash=f202e649a89734cfa807c073dcd848f5e6f49298a6b324923ec228c3e584cabe";
+        }
         Response step5 = apiRequests.post(RestRequest.builder()
-                .headers(Map.of("Content-Type", "application/x-www-form-urlencoded"))
+                .headers(Map.of("Content-Type", "application/x-www-form-urlencoded",
+                        "origin", "https://cybrillarta.s.finprim.com",
+                        "referer", "https://cybrillarta.s.finprim.com/"))
                 .rawFormBody(step5FormBody)
-                .url(finprimOndcCallbackUrl)
+                .url(step5Url)
                 .build());
         result.setFinprimOndcCallbackStatus(step5.getStatusCode());
         log.info("Step 5 finprimOndcCallback — status={}", step5.getStatusCode());
