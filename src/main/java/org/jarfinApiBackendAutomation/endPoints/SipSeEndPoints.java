@@ -43,4 +43,13 @@ public class SipSeEndPoints {
     public static final String BILLDESK_NETBANKING_CALLBACK_SIMULATOR = "https://uat1.billdesk.com/u2/websimulator/netbanking/callbackSimulator";
     public static final String BILLDESK_NETBANKING_CALLBACK_RESPONSE = "https://uat1.billdesk.com/u2/websimulator/netbanking/callbackResponse";
 
+
+    //withdrawl
+    public static final String LOCKER_DETAILS = "/finretail/v1/api/homefeed/featureSection?featureSection=LOCKER";
+    public static final String SCHEME_WISE_BALANCE = "/finretail/v1/api/investment/schemeWiseBalance";
+    public static final String SCHEME_FOLIO_BALANCE = "/finretail/v1/api/investment/schemeFolioBalance";
+    public static final String PRE_REDEMPTION_SUMMARY = "/finretail/v1/api/withdrawal/preRedemptionSummary";
+    public static final String WITHDRAWAL_INITIATE = "/finretail/v1/api/withdrawal/initiate";
+    public static final String WITHDRAWAL_SUBMIT = "/finretail/v1/api/withdrawal/submit";
+    public static final String WITHDRAWAL_STATUS = "/finretail/v1/api/withdrawal/status";
 }

@@ -188,5 +188,9 @@ public class CommonUtil {
         return fetchAndDecryptOtp(purchasePlanId, LUMPSUM_PURCHASE_CONSENT_OTP_TYPE, decryptFn);
     }
 
+    public String fetchAndDecryptWithdrawalOtp(String orderId, Function<String, String> decryptFn) {
+        return fetchAndDecryptOtp(orderId, WITHDRAWAL_CONSENT_OTP_TYPE, decryptFn);
+    }
+
 
 }

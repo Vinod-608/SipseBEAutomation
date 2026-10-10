@@ -80,7 +80,8 @@ public class MockDataSeeder extends RestRequest {
     }
 
 
-    public static BillDeskMandateMockResponse billdeskMandateMockPayment(String redirectUrl) {
+    public static BillDeskMandateMockResponse
+    billdeskMandateMockPayment(String redirectUrl) {
         BillDeskMandateMockResponse result = new BillDeskMandateMockResponse();
 
         // Extract txnId from redirectUrl to build dynamic finprim callback URLs
