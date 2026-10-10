@@ -580,52 +580,9 @@ public class OnboardingMethodhelper {
 
 
 
-    public String fetchSipConsentOtpFromDb(String purchasePlanId) {
-        int maxRetries = 10;
-        int delayMs = 2000;
 
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                Thread.sleep(delayMs);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
 
-            Document doc = DataBaseFactory.jarFinMongo()
-                    .fetchDataMultiFilter(
-                            DB_JARFIN,
-                            OTP_DELIVERY_REPORTS_COLLECTION,
-                            Map.of(
-                                    SOURCE_REF_ID_FIELD, purchasePlanId,
-                                    OTP_TYPE_FIELD, DAILY_SIP_SETUP_CONSENT_OTP_TYPE),
-                            SORT_FIELD);
-
-            if (doc == null) {
-                log.warn("Attempt {}/{}: No SIP consent OTP document found for purchasePlanId={}",
-                        attempt, maxRetries, purchasePlanId);
-                continue;
-            }
-
-            String encryptedOtp = doc.getString(SIPSE_OTP_FIELD);
-            if (encryptedOtp != null && !encryptedOtp.isBlank()) {
-                log.info("Fetched SIP consent encrypted OTP for purchasePlanId={} on attempt {}",
-                        purchasePlanId, attempt);
-                return encryptedOtp;
-            }
-        }
-
-        log.error("Failed to fetch SIP consent OTP from DB for purchasePlanId={} after {} attempts",
-                purchasePlanId, maxRetries);
-        return null;
-    }
-
-    public SubmitSipResponse sipSubmit(String accessToken, String purchasePlanId, boolean isNewPurchasePlan) {
-        String encryptedOtp = fetchSipConsentOtpFromDb(purchasePlanId);
-
-        SipSeAuthMethods authMethods = new SipSeAuthMethods();
-        String plainOtp = authMethods.decryptOtp(encryptedOtp).getData();
-        log.info("SIP Submit — decrypted OTP={} for purchasePlanId={}", plainOtp, purchasePlanId);
+    public SubmitSipResponse sipSubmit(String accessToken, String purchasePlanId, boolean isNewPurchasePlan, String plainOtp ) {
 
         RestRequest req = RestRequest.builder()
                 .headers(Map.of(

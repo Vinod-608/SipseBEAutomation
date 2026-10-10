@@ -6,11 +6,19 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.jarfinApiBackendAutomation.dbConfiguration.DataBaseFactory;
+
+import static org.jarfinApiBackendAutomation.dbConfiguration.DBConstants.*;
+import static org.jarfinApiBackendAutomation.dbConfiguration.DBConstants.DAILY_SIP_SETUP_CONSENT_OTP_TYPE;
+import static org.jarfinApiBackendAutomation.dbConfiguration.DBConstants.OTP_TYPE_FIELD;
+import static org.jarfinApiBackendAutomation.dbConfiguration.DBConstants.SIPSE_OTP_FIELD;
+import static org.jarfinApiBackendAutomation.dbConfiguration.DBConstants.SORT_FIELD;
 
 @Slf4j
 public class CommonUtil {
@@ -120,4 +128,65 @@ public class CommonUtil {
 
         return response;
     }
+
+
+
+    public String fetchEncryptedOtpFromDb(String sourceRefId, String otpType) {
+        int maxRetries = 10;
+        int delayMs = 2000;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+
+            Document doc = DataBaseFactory.jarFinMongo()
+                    .fetchDataMultiFilter(
+                            DB_JARFIN,
+                            OTP_DELIVERY_REPORTS_COLLECTION,
+                            Map.of(
+                                    SOURCE_REF_ID_FIELD, sourceRefId,
+                                    OTP_TYPE_FIELD, otpType),
+                            SORT_FIELD);
+
+            if (doc == null) {
+                log.warn("Attempt {}/{}: No OTP document found for sourceRefId={}, otpType={}",
+                        attempt, maxRetries, sourceRefId, otpType);
+                continue;
+            }
+
+            String encryptedOtp = doc.getString(SIPSE_OTP_FIELD);
+            if (encryptedOtp != null && !encryptedOtp.isBlank()) {
+                log.info("Fetched encrypted OTP for sourceRefId={}, otpType={} on attempt {}",
+                        sourceRefId, otpType, attempt);
+                return encryptedOtp;
+            }
+        }
+
+        log.error("Failed to fetch OTP from DB for sourceRefId={}, otpType={} after {} attempts",
+                sourceRefId, otpType, maxRetries);
+        return null;
+    }
+
+
+    public String fetchAndDecryptOtp(String sourceRefId, String otpType, Function<String, String> decryptFn) {
+        String encryptedOtp = fetchEncryptedOtpFromDb(sourceRefId, otpType);
+        if (encryptedOtp == null) return null;
+        String plainOtp = decryptFn.apply(encryptedOtp);
+        log.info("Decrypted OTP={} for sourceRefId={}, otpType={}", plainOtp, sourceRefId, otpType);
+        return plainOtp;
+    }
+
+    public String fetchAndDecryptSipConsentOtp(String purchasePlanId, Function<String, String> decryptFn) {
+        return fetchAndDecryptOtp(purchasePlanId, DAILY_SIP_SETUP_CONSENT_OTP_TYPE, decryptFn);
+    }
+
+    public String fetchAndDecryptLumpSumOtp(String purchasePlanId, Function<String, String> decryptFn) {
+        return fetchAndDecryptOtp(purchasePlanId, LUMPSUM_PURCHASE_CONSENT_OTP_TYPE, decryptFn);
+    }
+
+
 }

@@ -34,6 +34,13 @@ public class SipSeEndPoints {
     public static final String SIP_SUBMIT = "/finretail/v1/api/sip/submit";
     public static final String SIP_STATUS = "/finretail/v1/api/sip";
     public static final String HOMEFEED_METADATA = "/finretail/v1/api/homefeed/metadata";
-
+    //lumsum
+    public static final String LUMPSUM_INITIATE = "/finretail/v1/api/lumpsum/initiate";
+    public static final String LUMPSUM_VERIFY = "/finretail/v1/api/lumpsum/verify";
+    public static final String LUMPSUM_SUBMIT = "/finretail/v1/api/lumpsum/submit";
+    public static final String LUMPSUM_STATUS = "/finretail/v1/api/lumpsum/status";
+    // Billdesk Netbanking simulator (lumpsum mock payment)
+    public static final String BILLDESK_NETBANKING_CALLBACK_SIMULATOR = "https://uat1.billdesk.com/u2/websimulator/netbanking/callbackSimulator";
+    public static final String BILLDESK_NETBANKING_CALLBACK_RESPONSE = "https://uat1.billdesk.com/u2/websimulator/netbanking/callbackResponse";
 
 }

@@ -1,6 +1,7 @@
 package sipSe.onBoarding;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.jarfinApiBackendAutomation.data.responseModel.sipSe.homeFeed.HomeFeedMetaDataResponse;
 import org.jarfinApiBackendAutomation.data.responseModel.sipSe.kyc.BankVerificationInitiateResponse;
 import org.jarfinApiBackendAutomation.data.responseModel.sipSe.kyc.BankVerificationInitiateV2Response;
 import org.jarfinApiBackendAutomation.data.responseModel.sipSe.kyc.BankVerificationStatus;
@@ -438,6 +439,13 @@ public class OnboardingValidation extends ApiAssertions {
     }
 
 
+    public void assertHomeFeedMetaData(HomeFeedMetaDataResponse response) {
+        if (!assertStatusCode(response.getStatusCode(), SC_OK, "Home Feed MetaData")) {
+            softAssert.assertAll();
+            return;
+        }
 
+        softAssert.assertAll();
+    }
 
 }

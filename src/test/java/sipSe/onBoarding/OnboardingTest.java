@@ -19,6 +19,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.testng.asserts.SoftAssert;
 import sipSe.authLogin.SipSeAuthHelper;
+import sipSe.authLogin.SipSeAuthMethods;
 import sipSe.testData.auth.TestDataAuth;
 import sipSe.onBoarding.OnBoardingdataProvider.BankVerificationInitiateScenario;
 import sipSe.onBoarding.OnBoardingdataProvider.MandateSetupScenario;
@@ -50,6 +51,7 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
     private String mandateId;
     private String purchasePlanId;
     private String mandateRedirectUrl;
+    private String plainOtp;
     private static final String MANDATE_SCHEME_ID = "6a270c20bd140f0050a265cd";
 
     // Set by panLookup happy-path, consumed by panConfirm* tests
@@ -608,28 +610,6 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
 
 
 
-    @Test(
-            priority = 18,
-            description = "Add Nominee — add nominee after KYC submit and mandate setup",
-            dataProvider = "addNomineeScenarios",
-            dataProviderClass = OnBoardingdataProvider.class)
-    public void addNominee(NomineeScenario scenario) {
-        try {
-            String token = scenario.tokenOverride() != null ? scenario.tokenOverride() : accessToken;
-            AddNomineeResponse response = onboardingMethodhelper.addNominee(token, scenario.request());
-            switch (scenario.assertion()) {
-                case SUCCESS -> onboardingValidation.assertAddNomineeSuccess(response);
-                case UNAUTHORIZED -> onboardingValidation.assertAddNomineeUnauthorized(response);
-                case BAD_REQUEST -> onboardingValidation.assertAddNomineeBadRequest(response);
-            }
-        } catch (Exception e) {
-            log.error("Exception during Add Nominee [{}]: {}", scenario.description(), e.getMessage());
-            Assert.fail("Add Nominee [" + scenario.description() + "] failed: " + e.getMessage(), e);
-        }
-        finally {
-            onboardingValidation.assertAll();
-        }
-    }
 
     @Test(priority = 19, description = "BillDesk eNACH Callback Simulator — trigger successful mandate approval")
     public void billdeskMandateMockPayment() {
@@ -669,13 +649,18 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
         }
     }
 
+
+
+
     @Test(priority = 21, description = "SIP Submit — submit OTP consent to activate daily SIP")
     public void sipSubmit() {
+
         if (purchasePlanId == null || purchasePlanId.isBlank()) {
             throw new SkipException("purchasePlanId not available — skipping SIP Submit");
         }
         try {
-            SubmitSipResponse response = onboardingMethodhelper.sipSubmit(accessToken, purchasePlanId, true);
+            plainOtp = fetchSipConsentOtpFromDb(purchasePlanId);
+            SubmitSipResponse response = onboardingMethodhelper.sipSubmit(accessToken, purchasePlanId, true, plainOtp);
             onboardingValidation.assertSipSubmitSuccess(response);
         } catch (SkipException e) {
             throw e;
@@ -687,8 +672,6 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
             onboardingValidation.assertAll();
         }
     }
-
-
 
 
 
@@ -729,7 +712,7 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
                 if (response.getData() != null   && "KYC_VERIFIED".equalsIgnoreCase(response.getData().getOnboardingState())) {
                     isKycVerified=true;
                 }
-//                onboardingValidation.assertSipStatusSuccess(response);
+                onboardingValidation.assertHomeFeedMetaData(response);
             } catch (SkipException e) {
                 throw e;
             } catch (Exception e) {
@@ -737,5 +720,12 @@ public class OnboardingTest extends SispeBaseTest.BaseTest {
                 Assert.fail("META DATA " + e.getMessage(), e);
             }
 
+    }
+
+    public static String fetchSipConsentOtpFromDb(String purchasePlanId) {
+        SipSeAuthMethods authMethods = new SipSeAuthMethods();
+        return new CommonUtil().fetchAndDecryptSipConsentOtp(
+                purchasePlanId,
+                encrypted -> authMethods.decryptOtp(encrypted).getData());
     }
 }

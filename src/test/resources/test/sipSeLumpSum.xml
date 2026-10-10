@@ -1,0 +1,26 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="SipSe LumpSum Payment Test Suite" verbose="1" data-provider-thread-count="7">
+
+    <parameter name="dbServer" value="jarfin"/>
+
+    <listeners>
+        <listener class-name="org.jarfinApiBackendAutomation.listeners.Listeners"/>
+        <listener class-name="org.jarfinApiBackendAutomation.listeners.AnnotationTransformer"/>
+    </listeners>
+
+    <test name="SipSe LumpSum Payment Tests" preserve-order="true">
+        <classes>
+            <class name="sipSe.lumSumPayment.LumpSumPaymentTest">
+                <methods>
+                    <include name="HomeFeedMetaData"/>
+                    <include name="LumSumIntiate"/>
+                    <include name="lumpSumVerify"/>
+                    <include name="lumpSumSubmit"/>
+                    <include name="billdeskMockPayment"/>
+                    <include name="lumpSumStatus"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+</suite>

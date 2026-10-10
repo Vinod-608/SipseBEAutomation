@@ -260,6 +260,266 @@ public class MockDataSeeder extends RestRequest {
         return result;
     }
 
+    public static BillDeskMandateMockResponse billdeskNetbankingMockPayment(String redirectUrl) {
+        BillDeskMandateMockResponse result = new BillDeskMandateMockResponse();
+
+        // Step 0 — follow the GET-redirect chain to reach the actual BillDesk payment page.
+        // Lumpsum flow has multiple GET hops before reaching cybrillarta (which has the data-json):
+        //   changejarondc (ONDC/CSRF) → api.sandbox.cybrilla (ONDC payments) → cybrillarta (BillDesk page)
+        // We loop until we find a POST form (or data-json without a GET form), then extract the body.
+        String callbackSimulatorUrl = SipSeEndPoints.BILLDESK_NETBANKING_CALLBACK_SIMULATOR;
+        String step1FormBody = null;
+
+        if (redirectUrl != null && !redirectUrl.isBlank()) {
+            String currentUrl = redirectUrl;
+            String prevUrl = null;
+            for (int hop = 0; hop <= 4; hop++) {
+                Response hopResp = apiRequests.get(RestRequest.builder()
+                        .headers(prevUrl == null
+                                ? Map.of(
+                                        "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                                        "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36")
+                                : Map.of(
+                                        "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                                        "referer", prevUrl,
+                                        "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                        .url(currentUrl)
+                        .build());
+                String hopBody = hopResp.getBody().asString();
+                log.info("Step 0 hop={} — GET {}, status={}", hop, currentUrl, hopResp.getStatusCode());
+                log.info("Step 0 hop={} — body (first 300): {}", hop,
+                        hopBody.length() > 300 ? hopBody.substring(0, 300) : hopBody);
+
+                String hopMethod = extractFormMethod(hopBody);
+                String hopAction = extractFormAction(hopBody);
+
+                if ("get".equalsIgnoreCase(hopMethod) && hopAction != null && !hopAction.isBlank()) {
+                    // Another GET-form redirect — build the next URL.
+                    // If the action already has query params (CSRF case), use it as-is.
+                    // Otherwise append the hidden-input values as query params (browser GET-form behaviour).
+                    String hiddenParams = buildFormBodyFromHtml(hopBody);
+                    prevUrl = currentUrl;
+                    if (hopAction.contains("?") || hiddenParams.isBlank()) {
+                        currentUrl = hopAction;
+                    } else {
+                        currentUrl = hopAction + "?" + hiddenParams;
+                    }
+                    log.info("Step 0 hop={} — following GET form to={}", hop, currentUrl);
+                } else {
+                    // POST form (or data-json page) — this is the actual BillDesk payment page.
+                    if (hopAction != null && !hopAction.isBlank()) {
+                        callbackSimulatorUrl = hopAction;
+                        log.info("Step 0 hop={} — extracted POST form action={}", hop, callbackSimulatorUrl);
+                    }
+                    step1FormBody = buildFormBodyFromHtml(hopBody);
+                    log.info("Step 0 hop={} — reached payment page, form body length={}", hop, step1FormBody.length());
+                    break;
+                }
+            }
+        }
+
+        if (step1FormBody == null || step1FormBody.isBlank()) {
+            log.error("Could not build Step 1 form body from redirectUrl — netbanking mock cannot proceed");
+            result.setCallbackSimulatorStatus(0);
+            result.setStatusCode(0);
+            return result;
+        }
+
+        // Step 1 — callbackSimulator: POST merchant_code + encdata
+        Response step1 = apiRequests.post(RestRequest.builder()
+                .headers(Map.of(
+                        "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Content-Type", "application/x-www-form-urlencoded",
+                        "origin", "https://changejarondc.s.finprim.com",
+                        "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                .rawFormBody(step1FormBody)
+                .url(callbackSimulatorUrl)
+                .build());
+        result.setCallbackSimulatorStatus(step1.getStatusCode());
+        result.setStatusCode(step1.getStatusCode());
+        result.setResponseBody(step1.getBody().asString());
+        log.info("Step 1 callbackSimulator — status={}", step1.getStatusCode());
+
+        // Step 2 — callbackResponse: same form fields + bankid=SBI + status=Success
+        String step1Body = step1.getBody().asString();
+        String step2BaseForm = buildFormBodyFromHtml(step1Body);
+        String step2FormBody = step2BaseForm
+                + (step2BaseForm.isEmpty() ? "" : "&")
+                + "bankid=SBI&status=Success";
+        Response step2 = apiRequests.post(RestRequest.builder()
+                .headers(Map.of(
+                        "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Content-Type", "application/x-www-form-urlencoded",
+                        "origin", "https://uat1.billdesk.com",
+                        "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                .rawFormBody(step2FormBody)
+                .url(SipSeEndPoints.BILLDESK_NETBANKING_CALLBACK_RESPONSE)
+                .build());
+        result.setCallbackResponseStatus(step2.getStatusCode());
+        log.info("Step 2 callbackResponse — status={}", step2.getStatusCode());
+
+        // Step 3 — bankresponse: POST with empty body to URL extracted from Step 2 form action or JS redirect
+        String step2Body = step2.getBody().asString();
+        log.info("Step 2 body (first 500): {}", step2Body.length() > 500 ? step2Body.substring(0, 500) : step2Body);
+        String step3Url = extractRedirectUrl(step2Body);
+        if (step3Url == null || step3Url.isBlank()) {
+            log.error("Could not extract Step 3 bankresponse URL from Step 2 — netbanking mock cannot continue");
+            return result;
+        }
+        log.info("Step 3 bankresponse URL={}", step3Url);
+        // Disable redirect following: BillDesk bankresponse redirects to finprim, but following
+        // those redirects causes a ClientProtocolException (circular/too-many redirects in Apache HttpClient).
+        // We capture the immediate response to extract transaction_response and the finprim callback URL.
+        Response step3 = io.restassured.RestAssured.given()
+                .relaxedHTTPSValidation()
+                .redirects().follow(false)
+                .header("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("content-type", "application/x-www-form-urlencoded")
+                .header("origin", "https://uat1.billdesk.com")
+                .header("user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36")
+                .body("")
+                .when()
+                .post(step3Url)
+                .then()
+                .extract()
+                .response();
+        result.setProcessNpciRespStatus(step3.getStatusCode());
+        log.info("Step 3 bankresponse — status={}", step3.getStatusCode());
+
+        // Step 4 — finprim billdesk callback: POST transaction_response extracted from Step 3.
+        // BillDesk bankresponse may return a 3xx redirect (Location header → finprim callback URL)
+        // or an HTML page with a form that auto-submits. Handle both.
+        String step3Body = step3.getBody().asString();
+        log.info("Step 3 response body (first 500): {}", step3Body.length() > 500 ? step3Body.substring(0, 500) : step3Body);
+        String step4Url = extractFormAction(step3Body);
+        String step4FormBody = buildFormBodyFromHtml(step3Body);
+        if (step4Url == null || step4Url.isBlank()) {
+            // Fallback: redirect case — get URL from Location header
+            step4Url = step3.getHeader("Location");
+            log.info("Step 3 — no form action found, trying Location header: {}", step4Url);
+        }
+        if (step4Url == null || step4Url.isBlank()) {
+            log.error("Could not extract Step 4 finprim callback URL from Step 3");
+            return result;
+        }
+        log.info("Step 4 finprim callback URL={}", step4Url);
+        Response step4 = apiRequests.post(RestRequest.builder()
+                .headers(Map.of(
+                        "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Content-Type", "application/x-www-form-urlencoded",
+                        "origin", "https://uat1.billdesk.com",
+                        "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                .rawFormBody(step4FormBody)
+                .url(step4Url)
+                .build());
+        result.setFinprimBillDeskCallbackStatus(step4.getStatusCode());
+        log.info("Step 4 finprimBillDeskCallback — status={}", step4.getStatusCode());
+
+        // Step 5 — cybrilla ONDC callback: POSTed with paymentId + hash + status=success.
+        // The finprim billdesk-callback page (Step 4) contains a form whose action is
+        // api.sandbox.cybrilla.com/ondc/callbacks/payments with hidden fields (paymentId, hash, etc.)
+        String step4Body = step4.getBody().asString();
+        log.info("Step 4 response body (first 500): {}", step4Body.length() > 500 ? step4Body.substring(0, 500) : step4Body);
+        String step5Url = extractRedirectUrl(step4Body);
+        String step5FormBody = buildFormBodyFromHtml(step4Body);
+        if (step5Url == null || step5Url.isBlank()) {
+            log.warn("Step 4 — could not extract cybrilla ONDC callback URL, skipping Steps 5-7");
+        } else {
+            log.info("Step 5 cybrilla ONDC callback URL={}, hasFormBody={}", step5Url, !step5FormBody.isBlank());
+            Response step5;
+            if (step5FormBody == null || step5FormBody.isBlank()) {
+                step5 = apiRequests.get(RestRequest.builder()
+                        .headers(Map.of(
+                                "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                                "origin", "https://cybrillarta.s.finprim.com",
+                                "referer", "https://cybrillarta.s.finprim.com/",
+                                "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                        .url(step5Url)
+                        .build());
+            } else {
+                step5 = apiRequests.post(RestRequest.builder()
+                        .headers(Map.of(
+                                "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                                "Content-Type", "application/x-www-form-urlencoded",
+                                "origin", "https://cybrillarta.s.finprim.com",
+                                "referer", "https://cybrillarta.s.finprim.com/",
+                                "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                        .rawFormBody(step5FormBody)
+                        .url(step5Url)
+                        .build());
+            }
+            result.setFinprimOndcCallbackStatus(step5.getStatusCode());
+            log.info("Step 5 cybrilla ONDC callback — status={}", step5.getStatusCode());
+
+            // Step 6 — changejarondc.i finprim ONDC callback: POSTed with transaction_id + payment_id + status=PAID.
+            // The cybrilla ONDC callback response (Step 5) contains a form/redirect to
+            // changejarondc.i.s.finprim.com/ondc_callback/callback.
+            String step5Body = step5.getBody().asString();
+            log.info("Step 5 body (first 500): {}", step5Body.length() > 500 ? step5Body.substring(0, 500) : step5Body);
+            String step6Url = extractRedirectUrl(step5Body);
+            String step6FormBody = buildFormBodyFromHtml(step5Body);
+            if (step6Url == null || step6Url.isBlank()) {
+                log.warn("Step 5 — could not extract changejarondc.i ONDC callback URL, skipping Steps 6-7");
+            } else {
+                log.info("Step 6 changejarondc.i ONDC callback URL={}, hasFormBody={}", step6Url, !step6FormBody.isBlank());
+                Response step6;
+                if (step6FormBody == null || step6FormBody.isBlank()) {
+                    step6 = apiRequests.get(RestRequest.builder()
+                            .headers(Map.of(
+                                    "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                                    "origin", "https://api.sandbox.cybrilla.com",
+                                    "referer", "https://api.sandbox.cybrilla.com/",
+                                    "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                            .url(step6Url)
+                            .build());
+                } else {
+                    step6 = apiRequests.post(RestRequest.builder()
+                            .headers(Map.of(
+                                    "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                                    "Content-Type", "application/x-www-form-urlencoded",
+                                    "origin", "https://api.sandbox.cybrilla.com",
+                                    "referer", "https://api.sandbox.cybrilla.com/",
+                                    "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                            .rawFormBody(step6FormBody)
+                            .url(step6Url)
+                            .build());
+                }
+                result.setFinprimOndcCallbackStatus(step6.getStatusCode());
+                log.info("Step 6 changejarondc.i ONDC callback — status={}", step6.getStatusCode());
+
+                // Step 7 — final changejarondc.s ONDC callback: GET with payment_id + status=PAID.
+                // The changejarondc.i response (Step 6) redirects to changejarondc.s for the
+                // final client-facing ONDC payment completion callback.
+                String step6Body = step6.getBody().asString();
+                log.info("Step 6 body (first 500): {}", step6Body.length() > 500 ? step6Body.substring(0, 500) : step6Body);
+                String step7Url = extractRedirectUrl(step6Body);
+                if (step7Url == null || step7Url.isBlank()) {
+                    log.warn("Step 6 — could not extract final changejarondc.s ONDC callback URL, skipping Step 7");
+                } else {
+                    log.info("Step 7 final ONDC callback URL={}", step7Url);
+                    Response step7 = apiRequests.get(RestRequest.builder()
+                            .headers(Map.of(
+                                    "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                                    "origin", "https://changejarondc.i.s.finprim.com",
+                                    "referer", "https://changejarondc.i.s.finprim.com/",
+                                    "user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"))
+                            .url(step7Url)
+                            .build());
+                    result.setFinprimOndcCallbackStatus(step7.getStatusCode());
+                    log.info("Step 7 final ONDC callback — status={}", step7.getStatusCode());
+                }
+            }
+        }
+
+        log.info("BillDesk Netbanking Mock Payment complete — simulator={}, callbackResponse={}, bankresponse={}, finprimBd={}, ondc={}",
+                result.getCallbackSimulatorStatus(),
+                result.getCallbackResponseStatus(),
+                result.getProcessNpciRespStatus(),
+                result.getFinprimBillDeskCallbackStatus(),
+                result.getFinprimOndcCallbackStatus());
+        return result;
+    }
+
     private static String extractQueryParam(String url, String paramName) {
         if (url == null || url.isBlank()) return null;
         try {
@@ -278,12 +538,44 @@ public class MockDataSeeder extends RestRequest {
         return null;
     }
 
+    private static String extractRedirectUrl(String html) {
+        if (html == null || html.isBlank()) return null;
+        // 1. HTML <form action>
+        String formAction = extractFormAction(html);
+        if (formAction != null && !formAction.isBlank()) return formAction;
+        int flags = java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL;
+        // 2. <meta http-equiv="refresh" content="N; url=...">
+        java.util.regex.Matcher meta = java.util.regex.Pattern.compile(
+                "<meta[^>]+http-equiv=[\"']refresh[\"'][^>]+content=[\"'][^;]*;\\s*url=([^\"'\\s>]+)", flags).matcher(html);
+        if (meta.find()) return unescapeHtml(meta.group(1).trim());
+        meta = java.util.regex.Pattern.compile(
+                "<meta[^>]+content=[\"'][^;]*;\\s*url=([^\"'\\s>]+)[^>]+http-equiv=[\"']refresh[\"']", flags).matcher(html);
+        if (meta.find()) return unescapeHtml(meta.group(1).trim());
+        // 3. JS window.location.href = '...' or window.location = '...'
+        java.util.regex.Matcher js = java.util.regex.Pattern.compile(
+                "window\\.location(?:\\.href)?\\s*=\\s*[\"']([^\"']+)[\"']", flags).matcher(html);
+        if (js.find()) return unescapeHtml(js.group(1).trim());
+        // 4. JS form.action = '...' (dynamically created form)
+        java.util.regex.Matcher jsFormAction = java.util.regex.Pattern.compile(
+                "form\\.action\\s*=\\s*[\"']([^\"']+)[\"']", flags).matcher(html);
+        if (jsFormAction.find()) return unescapeHtml(jsFormAction.group(1).trim());
+        return null;
+    }
+
     private static String extractFormAction(String html) {
         if (html == null || html.isBlank()) return null;
         int flags = java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL;
         java.util.regex.Matcher m = java.util.regex.Pattern.compile(
                 "<form[^>]+action=[\"']([^\"']+)[\"']", flags).matcher(html);
         return m.find() ? unescapeHtml(m.group(1)) : null;
+    }
+
+    private static String extractFormMethod(String html) {
+        if (html == null || html.isBlank()) return "post";
+        int flags = java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "<form[^>]+method=[\"']([^\"']+)[\"']", flags).matcher(html);
+        return m.find() ? m.group(1).toLowerCase().trim() : "post";
     }
 
     private static String buildFormBodyFromHtml(String html) {
@@ -301,24 +593,28 @@ public class MockDataSeeder extends RestRequest {
             }
         }
 
-        // Fallback: finprim pages use <div data-json="..."> with JS auto-submit — no static <input> tags
-        if (fields.isEmpty()) {
-            java.util.regex.Matcher jsonDivMatcher = java.util.regex.Pattern.compile(
-                    "<div[^>]+data-json=[\"']([^\"']*)[\"']", flags).matcher(html);
-            if (jsonDivMatcher.find()) {
-                String jsonAttr = unescapeHtml(jsonDivMatcher.group(1));
-                log.info("Step 0 — found data-json div, raw JSON length={}", jsonAttr.length());
-                try {
-                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                    // Allow raw control chars (e.g. CR \r from &#13; entities in XML embedded in JSON)
-                    mapper.configure(com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true);
-                    java.util.Map<String, String> jsonMap = mapper.readValue(jsonAttr,
-                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
-                    fields.putAll(jsonMap);
-                    log.info("Step 0 — parsed {} fields from data-json", fields.size());
-                } catch (Exception e) {
-                    log.warn("Step 0 — failed to parse data-json attribute: {}", e.getMessage());
+        // Also check for <div data-json="..."> — used by finprim pages for JS auto-submit.
+        // When hidden inputs are found but have empty values (e.g. lumpsum's cybrilla page),
+        // data-json carries the real values; we let it fill in any empty/missing fields.
+        java.util.regex.Matcher jsonDivMatcher = java.util.regex.Pattern.compile(
+                "<div[^>]+data-json=[\"']([^\"']*)[\"']", flags).matcher(html);
+        if (jsonDivMatcher.find()) {
+            String jsonAttr = unescapeHtml(jsonDivMatcher.group(1));
+            log.info("buildFormBody — found data-json div, raw JSON length={}", jsonAttr.length());
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                // Allow raw control chars (e.g. CR \r from &#13; entities in XML embedded in JSON)
+                mapper.configure(com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true);
+                java.util.Map<String, String> jsonMap = mapper.readValue(jsonAttr,
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
+                // data-json values fill in any hidden-input fields that are empty/missing
+                for (java.util.Map.Entry<String, String> e : jsonMap.entrySet()) {
+                    fields.merge(e.getKey(), e.getValue(), (existing, fromJson) ->
+                            (existing == null || existing.isBlank()) ? fromJson : existing);
                 }
+                log.info("buildFormBody — merged {} data-json fields, total fields={}", jsonMap.size(), fields.size());
+            } catch (Exception e) {
+                log.warn("buildFormBody — failed to parse data-json attribute: {}", e.getMessage());
             }
         }
 

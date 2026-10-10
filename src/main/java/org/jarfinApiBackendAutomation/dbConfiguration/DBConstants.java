@@ -17,4 +17,5 @@ public class DBConstants {
     public static final String SOURCE_REF_ID_FIELD = "sourceRefId";
     public static final String OTP_TYPE_FIELD = "otpType";
     public static final String DAILY_SIP_SETUP_CONSENT_OTP_TYPE = "DAILY_SIP_SETUP_CONSENT";
+    public static final String LUMPSUM_PURCHASE_CONSENT_OTP_TYPE = "LUMPSUM_PURCHASE_CONSENT";
 }
