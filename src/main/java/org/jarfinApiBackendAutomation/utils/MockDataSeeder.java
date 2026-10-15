@@ -19,13 +19,16 @@ public class MockDataSeeder extends RestRequest {
     private static final ApiRequests apiRequests = new ApiRequests();
     private MockDataSeeder() {}
 
+
+
     public static void insertMockBankLookupFp(String phoneNumber) {
         Document response =
                 new Document("status", "success")
                         .append("accountHolderName", "Mohan Mock")
                         .append("accountNumber", "82445481193")
                         .append("ifscCode", "SBIN0011311")
-                        .append("type", "savings");
+                        .append("type", "savings")
+                        .append("pendingPolls",0);
         insertIfAbsent(phoneNumber, "BANK_LOOKUP_FP", response);
     }
 
@@ -35,21 +38,92 @@ public class MockDataSeeder extends RestRequest {
                         .append("name", "Mohan Mock")
                         .append("dateOfBirth", "1999-09-09")
                         .append("gender", "male")
-                        .append("pan", "LERPC3751H")
+                        .append("pan", "LAUPC3751H")
                         .append("incomeSlab", "above_5lakh_upto_10lakh")
                         .append("occupation", "Bussiness")
-                        .append("pincode", "560010");
+                        .append("pincode", "560010")
+                      .append("pendingPolls",0);
         insertIfAbsent(phoneNumber, "PROFILE_LOOKUP_FP", response);
     }
+
 
     public static void insertMockPanLookupOnGrid(String phoneNumber) {
         Document response =
                 new Document("status", "success")
-                        .append("pan", "LERPC3751H")
+                        .append("pan", "LAUPC3751H")
                         .append("dob", "1999-01-02")
                         .append("name", "Mohan Mock")
                         .append("gender", "MALE");
         insertIfAbsent(phoneNumber, "PAN_LOOKUP_ONGRID", response);
+    }
+
+    // ── DigiLocker KYC-specific mocks (separate phone, separate PAN) ─────────
+
+    public static void insertMockKycPanLookupOnGrid(String phoneNumber) {
+        Document response =
+                new Document("status", "success")
+                        .append("pan", "MQIPC3753H")
+                        .append("dob", "1999-01-02")
+                        .append("name", "Mohan Mock")
+                        .append("gender", "MALE");
+        insertIfAbsent(phoneNumber, "PAN_LOOKUP_ONGRID", response);
+    }
+
+
+
+    public static void insertMockKycBankLookupFp(String phoneNumber) {
+        Document response =
+                new Document("status", "success")
+                        .append("accountHolderName", "Mohan Mock")
+                        .append("accountNumber", "82335481193")
+                        .append("ifscCode", "SBIN0011311")
+                        .append("type", "savings")
+                        .append("pendingPolls",0);
+        insertIfAbsent(phoneNumber, "BANK_LOOKUP_FP", response);
+    }
+
+    public static void insertMockKycProfileLookupFp(String phoneNumber) {
+        Document response =
+                new Document("status", "success")
+                        .append("name", "Mohan Mock")
+                        .append("dateOfBirth", "1999-09-09")
+                        .append("gender", "male")
+                        .append("pan", "MQIPC3753H")
+                        .append("incomeSlab", "above_5lakh_upto_10lakh")
+                        .append("occupation", "Bussiness")
+                        .append("pincode", "560010")
+                        .append("pendingPolls",0);
+        insertIfAbsent(phoneNumber, "PROFILE_LOOKUP_FP", response);
+    }
+
+    /**
+     * Deletes all userKycDetails records for the given phone number so the DigiLocker
+     * identity-proof initiation can proceed from a clean state on repeated runs.
+     */
+    public static void cleanKycDetailsForPhone(String fullPhoneNumber) {
+        Document user = jarFinMongo().fetchDataMultiFilter(
+                DB_JARFIN, "users", Map.of("phoneNumber", fullPhoneNumber), null);
+        if (user == null) {
+            log.warn("cleanKycDetailsForPhone: no user found for phone={}", fullPhoneNumber);
+            return;
+        }
+        String userId = user.getObjectId("_id").toHexString();
+        long deletedCount = jarFinMongo()
+                .getCollection(DB_JARFIN, "userKycDetails")
+                .deleteMany(new Document("userId", userId))
+                .getDeletedCount();
+        log.info("cleanKycDetailsForPhone: deleted {} userKycDetails records for userId={} phone={}",
+                deletedCount, userId, fullPhoneNumber);
+
+        // Also remove the KYC_PAN_PREVERIFICATION SUCCESS record that permanently marks DigiLocker as done.
+        // Without this, kycPreVerificationStatus always returns NOT_READY and kycIdentityProofInitiate is skipped.
+        long deletedVerCount = jarFinMongo()
+                .getCollection(DB_JARFIN, "userVerificationRecords")
+                .deleteMany(new Document("userId", userId)
+                        .append("verificationType", "KYC_PAN_PREVERIFICATION"))
+                .getDeletedCount();
+        log.info("cleanKycDetailsForPhone: deleted {} userVerificationRecords (KYC_PAN_PREVERIFICATION) for userId={} phone={}",
+                deletedVerCount, userId, fullPhoneNumber);
     }
 
     private static void insertIfAbsent(String phoneNumber, String mockType, Document responseDoc) {
@@ -81,7 +155,7 @@ public class MockDataSeeder extends RestRequest {
 
 
     public static BillDeskMandateMockResponse
-    billdeskMandateMockPayment(String redirectUrl) {
+        billdeskMandateMockPayment(String redirectUrl) {
         BillDeskMandateMockResponse result = new BillDeskMandateMockResponse();
 
         // Extract txnId from redirectUrl to build dynamic finprim callback URLs

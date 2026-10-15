@@ -49,7 +49,7 @@ public class SubmitProfileRequest {
                         ? prefill.getFatherName() : "Test")
                 .nationalityCountry("in")
                 .maritalStatus("UNMARRIED")
-                .addressLine1("Ggdggg")
+                .addressLine1("testing address")
                 .state("Arunachal Pradesh")
                 .pincode("560010")
                 .geolocation(Geolocation.builder()

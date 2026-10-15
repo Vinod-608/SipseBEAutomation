@@ -44,6 +44,18 @@ public class SipSeEndPoints {
     public static final String BILLDESK_NETBANKING_CALLBACK_RESPONSE = "https://uat1.billdesk.com/u2/websimulator/netbanking/callbackResponse";
 
 
+    // KYC DigiLocker / eSign
+    public static final String KYC_DIGILOCKER_PRE_VERIFICATION_STATUS = "/finretail/v1/api/kyc/preVerification/status";
+    public static final String KYC_IDENTITY_PROOF_INITIATE = "/finretail/v1/api/kyc/identityProof/initiate";
+    public static final String KYC_IDENTITY_PROOF_STATUS = "/finretail/v1/api/kyc/identityProof/status";
+    public static final String KYC_PREFILL_DETAILS_V2 = "/finretail/v1/api/kyc/prefill/details";
+    public static final String KYC_PRE_SIGNED_URL = "/finretail/v1/api/preSignedUrl";
+    public static final String KYC_SIGNATURE_SUBMIT = "/finretail/v1/api/kyc/signature/submit";
+    public static final String KYC_ESIGN_INITIATE = "/finretail/v1/api/kyc/esign/initiate";
+    public static final String KYC_ESIGN_STATUS = "/finretail/v1/api/kyc/esign/status";
+    public static final String KYC_STATUS = "/finretail/v1/api/kyc/status";
+    public static final String FINPRIM_BASE_URL = "https://s.finprim.com";
+
     //withdrawl
     public static final String LOCKER_DETAILS = "/finretail/v1/api/homefeed/featureSection?featureSection=LOCKER";
     public static final String SCHEME_WISE_BALANCE = "/finretail/v1/api/investment/schemeWiseBalance";

@@ -20,6 +20,52 @@ public class SipSeAuthHelper {
     @Getter private boolean newUser;
     @Getter private String userId;
 
+    public void generateTokenForPhone(ITestContext context, String countryCode, String phoneNumber) {
+        String dialCode = "+" + countryCode;
+        sipSeAuthMethods.resetOtpLimit(dialCode, phoneNumber);
+
+        long otpInitiatedAt = System.currentTimeMillis();
+        var initiateResponse = sipSeAuthMethods.initiateOTPHelper(
+                LoginInitiateRequest.buildLoginInitiatePayload(dialCode, phoneNumber));
+        if (!initiateResponse.isSuccess()
+                || initiateResponse.getData() == null
+                || !initiateResponse.getData().isOtpSent()) {
+            throw new RuntimeException(
+                    "OTP initiation failed for phoneNumber=" + phoneNumber
+                            + " — response: " + initiateResponse.getErrorDetail());
+        }
+        log.info("OTP initiated for phoneNumber={}", phoneNumber);
+
+        String encryptedOtp = sipSeAuthMethods.fetchOtpFromDb(phoneNumber, otpInitiatedAt);
+        if (encryptedOtp == null) {
+            throw new RuntimeException("Failed to fetch OTP from DB for phoneNumber=" + phoneNumber);
+        }
+
+        DecryptOtpResponse decryptOtpResponse = sipSeAuthMethods.decryptOtp(encryptedOtp);
+        if (!decryptOtpResponse.isSuccess() || decryptOtpResponse.getData() == null) {
+            throw new RuntimeException("Failed to decrypt OTP");
+        }
+
+        String fullPhone = "+" + countryCode + phoneNumber;
+        MockDataSeeder.insertMockPanLookupOnGrid(fullPhone);
+        MockDataSeeder.insertMockBankLookupFp(fullPhone);
+        MockDataSeeder.insertMockProfileLookupFp(fullPhone);
+        log.info("Mock responses seeded (insertIfAbsent) for phoneNumber={}", fullPhone);
+
+        LoginVerifyResponse verifyResponse = sipSeAuthMethods.verfiyOtpRequestHelper(
+                LoginVerifyRequest.buildLoginVerifyPayload(dialCode, phoneNumber,
+                        decryptOtpResponse.getData()));
+        if (!verifyResponse.isSuccess() || verifyResponse.getData() == null) {
+            throw new RuntimeException("OTP verification failed: " + verifyResponse.getMessage());
+        }
+
+        accessToken = verifyResponse.getData().getAccessToken();
+        refreshToken = verifyResponse.getData().getRefreshToken();
+        newUser = verifyResponse.getData().isNewUser();
+        userId = sipSeAuthMethods.fetchUserIdFromDb(phoneNumber);
+        log.info("Auth token generated for phoneNumber={}, newUser={}", phoneNumber, newUser);
+    }
+
     public void generateToken(ITestContext context) {
         sipSeAuthMethods.resetOtpLimit("+91", TestDataAuth.TEST_PHONE_NUMBER_SIPSE);
 

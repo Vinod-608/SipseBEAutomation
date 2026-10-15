@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="SipSe KYC DigiLocker Test Suite" verbose="1">
+    <parameter name="dbServer" value="jarfin"/>
+
+    <listeners>
+        <listener class-name="org.jarfinApiBackendAutomation.listeners.Listeners"/>
+        <listener class-name="org.jarfinApiBackendAutomation.listeners.AnnotationTransformer"/>
+    </listeners>
+
+    <test name="SipSe KYC DigiLocker Tests" preserve-order="true">
+        <classes>
+            <class name="sipSe.kyc.KycDigiLockerTest">
+                <methods>
+                    <!-- Phase 0: Check initial KYC state -->
+                    <include name="HomeFeedMetaData"/>
+
+                    <!-- Phase 1: Onboarding start -->
+                    <include name="submitEmail"/>
+                    <include name="onboardingVideoAsset"/>
+
+                    <!-- Phase 2: PAN Verification -->
+                    <include name="panPreVerificationStatus"/>
+                    <include name="panLookup"/>
+                    <include name="panConfirm"/>
+                    <include name="panStatus"/>
+
+                    <!-- Phase 3: Bank Verification -->
+                    <include name="bankVerificationStatusCheck"/>
+                    <include name="bankVerificationLookup"/>
+                    <include name="bankVerificationInitiate"/>
+                    <include name="bankPreVerificationStatus"/>
+
+                    <!-- Phase 4: KYC Profile -->
+                    <include name="KycPreVerificationStatus"/>
+                    <include name="kycPrefillDetailsProfile"/>
+                    <include name="kycProfileSubmit"/>
+                    <include name="submitConsent"/>
+
+                    <!-- Phase 5: DigiLocker Flow -->
+                    <include name="kycPreVerificationStatus"/>
+                    <include name="kycIdentityProofInitiate"/>
+                    <include name="finprimIdentityDocForwardTo"/>
+                    <include name="finprimIdentityDocSimulate"/>
+                    <include name="kycIdentityProofStatus"/>
+                    <include name="kycPrefillDetails"/>
+                    <include name="kycPreSignedUrl"/>
+                    <include name="kycSignatureSubmit"/>
+                    <include name="kycEsignInitiate"/>
+                    <include name="finprimEsignReview"/>
+                    <include name="finprimEsignSimulate"/>
+                    <include name="finprimEsignSimulateOtpStep2"/>
+                    <include name="finprimEsignSubmit"/>
+                    <include name="kycEsignStatus"/>
+                    <include name="kycStatus"/>
+
+                    <!-- Phase 6: Mandate and SIP -->
+                    <include name="mandateSetup"/>
+                    <include name="billdeskMandateMockPayment"/>
+                    <include name="mandateVerify"/>
+                    <include name="sipSubmit"/>
+                    <include name="sipStatusScreen"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>

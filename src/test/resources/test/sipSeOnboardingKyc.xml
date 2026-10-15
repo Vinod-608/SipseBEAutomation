@@ -22,9 +22,6 @@
                     <include name="bankVerificationLookUp"/>
                     <include name="bankVerificationInitiate"/>
                     <include name="bankVerificationFetch"/>
-<!--                    <include name="setuMockPayment"/>-->
-<!--                   <include name="bankVerificationFetchAfterMock"/>-->
-<!--                    <include name="bankPreVerificationInitiate"/>-->
                     <include name="bankPreVerificationStatus"/>
                     <include name="kycPrefillDetails"/>
                     <include name="kycProfileSubmit"/>
